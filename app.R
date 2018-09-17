@@ -81,6 +81,7 @@ server <- function(input, output, session) {
 ###########################################################################################
 
 absenteismo_procedimento <- reactive({
+   req(input$lista_procedimento)
    ifelse(input$lista_procedimento == "TODAS", a <- absenteismo_analise_procedimento, 
       a <- subset(absenteismo_analise_procedimento, absenteismo_analise_procedimento$UNIDADE == input$lista_procedimento))
       a
@@ -89,16 +90,29 @@ absenteismo_procedimento <- reactive({
 
 #gráfico 
 output$absenteismo_producao_plot <- renderPlotly({
+   req(input$lista_procedimento)
+   if(input$lista_procedimento == "TODAS"){
    
-   a <- ggplot(absenteismo_procedimento(), aes(x =  PROCEDIMENTO, y = `Percent Falta`, fill = UNIDADE)) + 
-         geom_col()+ 
-         ylab("  ")+
-         xlab("  ")+
-         theme_classic()+
-         theme(axis.text.x = element_text(hjust = 1))+
-         coord_flip()
-       
- ggplotly(a)
+              a <-  ggplot(absenteismo_procedimento(), aes(x =  PROCEDIMENTO, y = `Percent Falta`, fill = UNIDADE)) + 
+                     geom_col()+ 
+                     ylab("  ")+
+                     xlab("  ")+
+                     theme_classic()+
+                     theme(axis.text.x = element_text(hjust = 1))+
+                     coord_flip()
+   }else{
+   
+              a <-  ggplot(absenteismo_procedimento(), aes(x =  PROCEDIMENTO, y = `Percent Falta`, fill = `Percent Falta`)) + 
+                  geom_col()+ 
+                  ylab("  ")+
+                  xlab("  ")+
+                  theme_classic()+
+                  theme(axis.text.x = element_text(hjust = 1))+
+                  coord_flip()+ 
+                  scale_fill_gradient(low = "green", high = "red")
+   }
+    
+   ggplotly(a)
  
 })
 
