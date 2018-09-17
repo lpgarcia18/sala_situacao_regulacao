@@ -47,13 +47,13 @@ ui <- dashboardPage(skin = "blue",
           tabItems(
             
             ########################################################################################### 
-            #Centros de Saúde
+            #Absenteísmo por Procedimentos Produzidos
             ###########################################################################################
             tabItem(tabName = "absenteismo_producao", h2("Absenteísmo por Procedimentos Produzidos"),
                     
                     fluidRow(
                        box(selectInput(
-                        inputId="lista_procedimento",
+                        inputId="lista_procedimento_produzido",
                         label="Selecione uma Unidade:",
                         choices=list("POLICLÍNICA", "CEO", "EXTERNO", "POLICLÍNICA ou EXTERNO", "TODAS"),
                         selected="TODAS"),
@@ -62,13 +62,36 @@ ui <- dashboardPage(skin = "blue",
                     
                     
                     fluidRow(
-                      tabBox(title = "Absenteísmo por Procedimentos", width=12,
+                      tabBox(title = "Absenteísmo por Procedimentos Produzidos", width=12,
                              tabPanel("Gráfico", plotlyOutput(outputId = "absenteismo_producao_plot",height = "1000px")),
                              tabPanel("Dados", dataTableOutput("absenteismo_producao_tab", height = "800px")),
                              tabPanel("Informações", htmlOutput("absenteismo_producao_info", height = "800px"))
                              )
-            )
-         ) 
+                           )
+                        ),
+            ########################################################################################### 
+            #Absenteísmo por Procedimentos Solicitado
+            ###########################################################################################
+            tabItem(tabName = "absenteismo_solicitacao", h2("Absenteísmo por Unidades Solicitantes"),
+                    
+                    fluidRow(
+                       box(selectInput(
+                        inputId="lista_solicitacao",
+                        label="Selecione um Distrito:",
+                        choices=list("CENTRO", "CONTINENTE", "NORTE", "SUL", "TODOS"),
+                        selected="TODOS"),
+                        width = 12)
+                    ),
+                    
+                    
+                    fluidRow(
+                      tabBox(title = "Absenteísmo por Unidades Solicitantes", width=12,
+                             tabPanel("Gráfico", plotlyOutput(outputId = "absenteismo_solicitacao_plot",height = "1000px")),
+                             tabPanel("Dados", dataTableOutput("absenteismo_solicitacao_tab", height = "800px")),
+                             tabPanel("Informações", htmlOutput("absenteismo_solicitacao_info", height = "800px"))
+                             )
+                           )
+                        ) 
       )
    )
 )
@@ -77,21 +100,21 @@ server <- function(input, output, session) {
 ###########################################################################################
 
 ###########################################################################################
-#Florianópolis
+#Absenteísmo por Procedimentos Produzidos
 ###########################################################################################
 
 absenteismo_procedimento <- reactive({
-   req(input$lista_procedimento)
-   ifelse(input$lista_procedimento == "TODAS", a <- absenteismo_analise_procedimento, 
-      a <- subset(absenteismo_analise_procedimento, absenteismo_analise_procedimento$UNIDADE == input$lista_procedimento))
+   req(input$lista_procedimento_produzido)
+   ifelse(input$lista_procedimento_produzido == "TODAS", a <- absenteismo_analise_procedimento, 
+      a <- subset(absenteismo_analise_procedimento, absenteismo_analise_procedimento$UNIDADE == input$lista_procedimento_produzido))
       a
 })
  
 
 #gráfico 
 output$absenteismo_producao_plot <- renderPlotly({
-   req(input$lista_procedimento)
-   if(input$lista_procedimento == "TODAS"){
+   req(input$lista_procedimento_produzido)
+   if(input$lista_procedimento_produzido == "TODAS"){
    
               a <-  ggplot(absenteismo_procedimento(), aes(x =  PROCEDIMENTO, y = `Percent Falta`, fill = UNIDADE)) + 
                      geom_col()+ 
@@ -130,6 +153,66 @@ options = list(
 
 #informações 
 output$absenteismo_producao_info <- renderText({
+ 
+ paste("<b>teste </b>", "<br>",
+       "<b>teste: </b> teste")
+ 
+})
+
+###########################################################################################
+#Absenteísmo por Procedimentos Solicitado
+###########################################################################################
+
+absenteismo_solicitacao <- reactive({
+   req(input$lista_solicitacao)
+   ifelse(input$lista_solicitacao == "TODOS", a <- absenteismo_analise_unidade_solicitante, 
+      a <- subset(absenteismo_analise_unidade_solicitante, absenteismo_analise_unidade_solicitante$DISTRITO == input$lista_solicitacao))
+      a
+})
+ 
+
+#gráfico 
+output$absenteismo_solicitacao_plot <- renderPlotly({
+   req(input$lista_solicitacao)
+   if(input$lista_solicitacao == "TODOS"){
+   
+              a <-  ggplot(absenteismo_solicitacao(), aes(x =  UNIDADE, y = `2018`, fill = DISTRITO)) + 
+                     geom_col()+ 
+                     ylab("  ")+
+                     xlab("  ")+
+                     theme_classic()+
+                     theme(axis.text.x = element_text(hjust = 1))+
+                     coord_flip()
+   }else{
+   
+              a <-  ggplot(absenteismo_solicitacao(), aes(x =  UNIDADE, y = `2018`, fill = `2018`)) + 
+                  geom_col()+ 
+                  ylab("  ")+
+                  xlab("  ")+
+                  theme_classic()+
+                  theme(axis.text.x = element_text(hjust = 1))+
+                  coord_flip()+ 
+                  scale_fill_gradient(low = "green", high = "red")
+   }
+    
+   ggplotly(a)
+ 
+})
+
+#tabela 
+output$absenteismo_solicitacao_tab <- renderDataTable({
+ 
+ as.data.frame(absenteismo_solicitacao(), row.names = F)
+ 
+}, extensions = 'Buttons',
+options = list(
+ "dom" = 'T<"clear">lBfrtip',
+ buttons = list('copy', 'csv', 'pdf', 'print')))
+
+
+
+#informações 
+output$absenteismo_solicitacao_info <- renderText({
  
  paste("<b>teste </b>", "<br>",
        "<b>teste: </b> teste")
