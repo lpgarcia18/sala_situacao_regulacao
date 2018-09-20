@@ -242,7 +242,7 @@ output$absenteismo_solicitacao_plot <- renderPlotly({
 #tabela 
 output$absenteismo_solicitacao_tab <- renderDataTable({
  
- as.data.frame(absenteismo_solicitacao(), row.names = F)
+ absenteismo_solicitacao()
  
 }, extensions = 'Buttons',
 options = list(
