@@ -10,8 +10,7 @@ library(tidyverse)
 library(htmltools)
 library(DT)
 library(plotly)
-
-
+library(GGally)
 
 ########################################################################################### 
 #Banco de dados 
@@ -76,9 +75,18 @@ ui <- dashboardPage(skin = "blue",
                     
                     fluidRow(
                        box(selectInput(
-                        inputId="lista_solicitacao",
+                        inputId="lista_solicitacao_distrito",
                         label="Selecione um Distrito:",
                         choices=list("CENTRO", "CONTINENTE", "NORTE", "SUL", "TODOS"),
+                        selected="TODOS"),
+                        width = 12)
+                    ),
+                    
+                     fluidRow(
+                       box(selectInput(
+                        inputId="lista_solicitacao_ano",
+                        label="Selecione um Distrito:",
+                        choices=list("ANO_2017", "ANO_2018", "TODOS"),
                         selected="TODOS"),
                         width = 12)
                     ),
@@ -107,7 +115,10 @@ absenteismo_procedimento <- reactive({
    req(input$lista_procedimento_produzido)
    ifelse(input$lista_procedimento_produzido == "TODAS", a <- absenteismo_analise_procedimento, 
       a <- subset(absenteismo_analise_procedimento, absenteismo_analise_procedimento$UNIDADE == input$lista_procedimento_produzido))
+      a$PROCEDIMENTO <- factor(a$PROCEDIMENTO, levels = a$PROCEDIMENTO[order(a$`Percent Falta`)])
       a
+      
+      
 })
  
 
@@ -163,29 +174,58 @@ output$absenteismo_producao_info <- renderText({
 #Absenteísmo por Procedimentos Solicitado
 ###########################################################################################
 
-absenteismo_solicitacao <- reactive({
-   req(input$lista_solicitacao)
-   ifelse(input$lista_solicitacao == "TODOS", a <- absenteismo_analise_unidade_solicitante, 
-      a <- subset(absenteismo_analise_unidade_solicitante, absenteismo_analise_unidade_solicitante$DISTRITO == input$lista_solicitacao))
+absenteismo_solicitacao_distrito <- reactive({
+   req(input$lista_solicitacao_distrito)
+   req(input$lista_solicitacao_ano)
+   ifelse(input$lista_solicitacao_distrito == "TODOS", a <- absenteismo_analise_unidade_solicitante, 
+      a <- subset(absenteismo_analise_unidade_solicitante, absenteismo_analise_unidade_solicitante$DISTRITO == input$lista_solicitacao_distrito))
+      ifelse(input$lista_solicitacao_ano == "ANO_2018", 
+             a$UNIDADE <- factor(a$UNIDADE, levels = a$UNIDADE[order(a$ANO_2018)]),
+             a$UNIDADE <- factor(a$UNIDADE, levels = a$UNIDADE[order(a$ANO_2017)]))
       a
 })
- 
+
+absenteismo_solicitacao <- reactive({
+   req(input$lista_solicitacao_ano)
+   ifelse(input$lista_solicitacao_ano == "TODOS", a <- absenteismo_solicitacao_distrito(), 
+      a <- cbind(absenteismo_solicitacao_distrito()[,c(1,2)], absenteismo_solicitacao_distrito()[,names(absenteismo_solicitacao_distrito()) == input$lista_solicitacao_ano]))
+      a
+}) 
+
 
 #gráfico 
 output$absenteismo_solicitacao_plot <- renderPlotly({
-   req(input$lista_solicitacao)
-   if(input$lista_solicitacao == "TODOS"){
+   req(input$lista_solicitacao_distrito)
+   req(input$lista_solicitacao_ano)
+   if(input$lista_solicitacao_distrito == "TODOS" & input$lista_solicitacao_ano == "TODOS"){
+      
+               a <- ggparcoord(data = absenteismo_solicitacao(), columns = c(3,4), 
+                     groupColumn = 1, order = 4, boxplot = T, showPoints = T, scale = "uniminmax")+
+                     geom_text( aes(label = rep(absenteismo_solicitacao()$UNIDADE,2))) 
+      
+   }else if(input$lista_solicitacao_distrito != "TODOS" & input$lista_solicitacao_ano == "TODOS"){
    
-              a <-  ggplot(absenteismo_solicitacao(), aes(x =  UNIDADE, y = `2018`, fill = DISTRITO)) + 
+               a <- ggparcoord(data = absenteismo_solicitacao(), columns = c(3,4), 
+                     groupColumn = 2,order = 4, boxplot = T, showPoints = T, scale = "uniminmax")+
+                     geom_text( aes(label = rep(absenteismo_solicitacao()$UNIDADE,2))) 
+               
+   }else if(input$lista_solicitacao_distrito == "TODOS" & input$lista_solicitacao_ano != "TODOS"){
+      
+              VALOR <- absenteismo_solicitacao()[,names(absenteismo_solicitacao())==input$lista_solicitacao_ano]
+              
+              a <-  ggplot(absenteismo_solicitacao(), aes(x =  UNIDADE, y = VALOR, fill = DISTRITO)) + 
                      geom_col()+ 
                      ylab("  ")+
                      xlab("  ")+
                      theme_classic()+
                      theme(axis.text.x = element_text(hjust = 1))+
                      coord_flip()
+              
    }else{
+      
+              VALOR <- absenteismo_solicitacao()[,names(absenteismo_solicitacao())==input$lista_solicitacao_ano]   
    
-              a <-  ggplot(absenteismo_solicitacao(), aes(x =  UNIDADE, y = `2018`, fill = `2018`)) + 
+              a <-  ggplot(absenteismo_solicitacao(), aes(x =  UNIDADE, y = VALOR, fill = VALOR)) + 
                   geom_col()+ 
                   ylab("  ")+
                   xlab("  ")+
