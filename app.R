@@ -11,12 +11,15 @@ library(htmltools)
 library(DT)
 library(plotly)
 library(GGally)
+library(zoo)
+library(dplyr)
+
 
 ########################################################################################### 
 #Banco de dados 
 ###########################################################################################
 source("dados_absenteismo.R")
-
+source("dados_oferta_e_demanda.R")
 ########################################################################################### 
 #UI
 ###########################################################################################
@@ -31,6 +34,9 @@ ui <- dashboardPage(skin = "blue",
             menuItem("Absenteísmo",tabName = "absenteismo", icon = icon("dashboard"),           
                menuSubItem("Por produção", tabName = "absenteismo_producao"),
                menuSubItem("Por solicitação", tabName = "absenteismo_solicitacao")), 
+            menuItem("Oferta e Demanda",tabName = "oferta_e_demanda", icon = icon("dashboard"),           
+               menuSubItem("Por procedimento", tabName = "oferta_e_demanda_por_procedimento"),
+               menuSubItem("Tempo de espera", tabName = "oferta_e_demanda_tempo_espera")),
             #menuItem("Instruções", icon = icon("question-circle"),
                      #href = "https://github.com/analisededadosemsaudefloripa/saladesituacao/wiki/Instru%C3%A7%C3%B5es-para-Utiliza%C3%A7%C3%A3o-das-Salas-de-Situa%C3%A7%C3%A3o-em-Sa%C3%BAde"),
             #menuItem("Dados", icon = icon("database"),
@@ -99,7 +105,29 @@ ui <- dashboardPage(skin = "blue",
                              tabPanel("Informações", htmlOutput("absenteismo_solicitacao_info", height = "800px"))
                              )
                            )
-                        ) 
+                        ), 
+            ########################################################################################### 
+            #Oferta e Demanda por procedimento
+            ###########################################################################################
+            tabItem(tabName = "oferta_e_demanda_por_procedimento", h2("Oferta e Demanda por Procedimento"),
+                    
+                    fluidRow(
+                       box(selectInput(
+                        inputId="lista_oferta_demanda_por_procedimento",
+                        label="Selecione um Procedimento:",
+                        choices= unique(oferta_e_demanda$PROCEDIMENTO),
+                        selected=""),
+                        width = 12)
+                    ),
+                    
+                    fluidRow(
+                      tabBox(title = "Oferta e Demanda de Procediemntos", width=12,
+                             tabPanel("Gráfico", plotlyOutput(outputId = "oferta_demanda_por_procedimento_plot",height = "600px")),
+                             tabPanel("Dados", dataTableOutput("oferta_demanda_por_procedimento_tab", height = "600px")),
+                             tabPanel("Informações", htmlOutput("oferta_demanda_por_procedimento_info", height = "600px"))
+                             )
+                           )
+                        )
       )
    )
 )
@@ -258,6 +286,72 @@ output$absenteismo_solicitacao_info <- renderText({
        "<b>teste: </b> teste")
  
 })
+
+###########################################################################################
+#Oferta e Demanda por Procedimento
+###########################################################################################
+#Solução para construir o gráfico foi encontrada aqui: https://stackoverflow.com/questions/45227527/ggplot2-cannot-color-area-between-intersecting-lines-using-geom-ribbon?rq=1
+banco <- reactive({
+   req(input$lista_oferta_demanda_por_procedimento)
+   oferta <- subset(oferta_e_demanda, oferta_e_demanda$TIPO == "Agendados" & oferta_e_demanda$PROCEDIMENTO == input$lista_oferta_demanda_por_procedimento)
+   demanda <- subset(oferta_e_demanda, oferta_e_demanda$TIPO == "Solicitados" & oferta_e_demanda$PROCEDIMENTO == input$lista_oferta_demanda_por_procedimento)
+   a <- merge(oferta, demanda, by = c("PROCEDIMENTO", "MES"))
+   a <- a[,-c(3,5)]
+   names(a)[c(3,4)]<- c("AGENDADO", "SOLICITADO")
+   a
+})
+   
+banco.interp <- reactive({
+   map_df(banco(),~data.frame(AGENDADO = approx(banco()$MES, banco()$AGENDADO, n = 200), 
+                     SOLICITADO = approx(banco()$MES, banco()$SOLICITADO, n = 200)))
+})
+
+
+banco.pre <- reactive({ 
+   a <- banco.interp()[,-3]
+   names(a) <- c("DATA", "AGENDADO", "SOLICITADO")
+   a
+})   
+
+output$oferta_demanda_por_procedimento_plot <- renderPlotly({   
+      a <- ggplot(banco.pre(), aes(banco.pre()$DATA))+
+           geom_line(aes(y = banco.pre()$AGENDADO, group = 1, fill = "Agendado"), color = "blue", size = 1)+
+           geom_line(aes(y = banco.pre()$SOLICITADO, group = 1, fill = "Solicitado"), color = "red", size = 1)+
+           geom_ribbon(aes(ymin = banco.pre()$SOLICITADO, ymax = pmin(banco.pre()$AGENDADO, banco.pre()$SOLICITADO)), fill = "red", alpha = 0.3) +
+           geom_ribbon(aes(ymin = banco.pre()$AGENDADO, ymax = pmin(banco.pre()$AGENDADO, banco.pre()$SOLICITADO)), fill = "blue", alpha = 0.3) +
+           scale_fill_brewer(palette = "Set1", direction = -1)+
+           ylab("")+
+           xlab("Data")
+           expand_limits(y = 0)
+           
+      ggplotly(a, tooltip = NULL)
+      
+})
+      
+      
+#tabela 
+output$oferta_demanda_por_procedimento_tab <- renderDataTable({
+ 
+ a <- banco()
+ a$MES <- as.Date(a$MES, format = "%d/%m/%Y")
+ a
+ 
+}, extensions = 'Buttons',
+options = list(
+ "dom" = 'T<"clear">lBfrtip',
+ buttons = list('copy', 'csv', 'pdf', 'print')))
+
+
+
+#informações 
+output$oferta_demanda_por_procedimento_info <- renderText({
+ 
+ paste("<b>teste </b>", "<br>",
+       "<b>teste: </b> teste")
+ 
+})
+
+
 
 
 }    
