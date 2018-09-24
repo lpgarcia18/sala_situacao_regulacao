@@ -13,6 +13,8 @@ library(plotly)
 library(GGally)
 library(zoo)
 library(dplyr)
+library(treemap)
+library(d3treeR)
 
 
 ########################################################################################### 
@@ -71,11 +73,10 @@ ui <- dashboardPage(skin = "blue",
           ########################################################################################### 
           sidebarMenu(
             menuItem("Tempo de Espera",tabName = "oferta_e_demanda", icon = icon("dashboard"),
-                     menuSubItem("Por procedimento", tabName = "tempo_de_espera_procedimento_dia"),
-                     menuSubItem("Procedimentos-dia", tabName = "tempo_de_espera_procedimento_todos_dia"),
-                     menuSubItem("Procedimentos-aguardando", tabName = "tempo_de_espera_procedimento_todos_aguardando"),
-                     menuSubItem("Procedimentos-agendado", tabName = "tempo_de_espera_procedimento_todos_agendado"),
-                     menuSubItem("Procedimentos-oferta", tabName = "tempo_de_espera_procedimento_todos_oferta")),
+                     menuSubItem("Por procedimento", tabName = "tempo_de_espera_por_procedimento"),
+                     menuSubItem("Todos por oferta", tabName = "tempo_de_espera_todos_procedimentos_oferta"),
+                     menuSubItem("Todos por fila", tabName = "tempo_de_espera_todos_procedimentos_fila"),
+                     menuSubItem("Todos por dia", tabName = "tempo_de_espera_todos_procedimentos_dia")),
             menuItem("Oferta e Demanda",tabName = "oferta_e_demanda", icon = icon("dashboard"),
                menuSubItem("Por procedimento", tabName = "oferta_e_demanda_por_procedimento")),
             menuItem("Absenteísmo",tabName = "absenteismo", icon = icon("dashboard"),           
@@ -97,25 +98,75 @@ ui <- dashboardPage(skin = "blue",
             ########################################################################################### 
             #Tempo de Espera por procedimento
             ###########################################################################################
-            tabItem(tabName = "tempo_de_espera_procedimento_dia", h2("Tempo de Espera por Procedimento"),
+            tabItem(tabName = "tempo_de_espera_por_procedimento", h2("Tempo de Espera por Procedimento"),
+                     
+                    fluidRow(
+                        infoBoxOutput("tempo_de_espera_procedimento_dia_box1"),
+                        infoBoxOutput("tempo_de_espera_procedimento_dia_box2"),
+                        infoBoxOutput("tempo_de_espera_procedimento_dia_box3")
+                    ),
                     
                     fluidRow(
                        box(selectInput(
-                        inputId="lista_tempo_de_espera_procedimento",
+                        inputId="lista_tempo_de_espera_por_procedimento",
                         label="Selecione um Procedimento:",
-                        choices= c(unique(as.character(previsao$PROCEDIMENTO)), "TODOS"),
-                        selected="TODOS"),
+                        choices= c(unique(as.character(tempo_espera$PROCEDIMENTO))),
+                        selected=""),
                         width = 12)
                     ),
                     
                     fluidRow(
                       tabBox(title = "Oferta e Demanda de Procediemntos", width=12,
-                             tabPanel("Gráfico", plotlyOutput(outputId = "tempo_de_espera_procedimento_plot",height = "1000px")),
-                             tabPanel("Dados", dataTableOutput("tempo_de_espera_procedimento_tab", height = "800px")),
-                             tabPanel("Informações", htmlOutput("tempo_de_espera_procedimento_info", height = "800px"))
+                             tabPanel("Gráfico", plotlyOutput(outputId = "tempo_de_espera_procedimento_dia_plot")),
+                             tabPanel("Dados", dataTableOutput("tempo_de_espera_procedimento_dia_tab", height = "400px")),
+                             tabPanel("Informações", htmlOutput("tempo_de_espera_procedimento_dia_info", height = "400px"))
                              )
                            )
                         ),
+            ########################################################################################### 
+            #Tempo de Espera todos os procedimento por oferta
+            ###########################################################################################
+            tabItem(tabName = "tempo_de_espera_todos_procedimentos_oferta", h2("Tempo de Espera de Todos os Procedimentos - Por Oferta"),
+                     
+
+                    fluidRow(
+                      tabBox(title = "Tempo de Espera de Todos os Procedimentos - Por Oferta", width=12,
+                             tabPanel("Gráfico", d3tree2Output(outputId = "tempo_de_espera_todos_procedimentos_oferta_plot")),
+                             tabPanel("Dados", dataTableOutput("tempo_de_espera_todos_procedimentos_oferta_tab", height = "400px")),
+                             tabPanel("Informações", htmlOutput("tempo_de_espera_todos_procedimentos_oferta_info", height = "400px"))
+                             )
+                           )
+                        ),
+            ########################################################################################### 
+            #Tempo de Espera todos os procedimento por fila
+            ###########################################################################################
+            tabItem(tabName = "tempo_de_espera_todos_procedimentos_fila", h2("Tempo de Espera de Todos os Procedimentos - Por Fila"),
+                     
+
+                    fluidRow(
+                      tabBox(title = "Tempo de Espera de Todos os Procedimentos - Por Fila", width=12,
+                             tabPanel("Gráfico", d3tree2Output(outputId = "tempo_de_espera_todos_procedimentos_fila_plot")),
+                             tabPanel("Dados", dataTableOutput("tempo_de_espera_todos_procedimentos_fila_tab", height = "400px")),
+                             tabPanel("Informações", htmlOutput("tempo_de_espera_todos_procedimentos_fila_info", height = "400px"))
+                             )
+                           )
+                        ),
+                    
+            ########################################################################################### 
+            #Tempo de Espera todos os procedimento por dia
+            ###########################################################################################
+            tabItem(tabName = "tempo_de_espera_todos_procedimentos_dia", h2("Tempo de Espera de Todos os Procedimentos - Por Dia"),
+                     
+
+                    fluidRow(
+                      tabBox(title = "Tempo de Espera de Todos os Procedimentos - Por Dia", width=12,
+                             tabPanel("Gráfico", plotlyOutput(outputId = "tempo_de_espera_todos_procedimentos_dia_plot",height = "1100px")),
+                             tabPanel("Dados", dataTableOutput("tempo_de_espera_todos_procedimentos_dia_tab", height = "400px")),
+                             tabPanel("Informações", htmlOutput("tempo_de_espera_todos_procedimentos_dia_info", height = "400px"))
+                             )
+                           )
+                        ),
+
             ########################################################################################### 
             #Oferta e Demanda por procedimento
             ###########################################################################################
@@ -132,9 +183,9 @@ ui <- dashboardPage(skin = "blue",
                     
                     fluidRow(
                       tabBox(title = "Oferta e Demanda de Procediemntos", width=12,
-                             tabPanel("Gráfico", plotlyOutput(outputId = "oferta_demanda_por_procedimento_plot",height = "600px")),
-                             tabPanel("Dados", dataTableOutput("oferta_demanda_por_procedimento_tab", height = "600px")),
-                             tabPanel("Informações", htmlOutput("oferta_demanda_por_procedimento_info", height = "600px"))
+                             tabPanel("Gráfico", plotlyOutput(outputId = "oferta_demanda_por_procedimento_plot")),
+                             tabPanel("Dados", dataTableOutput("oferta_demanda_por_procedimento_tab", height = "400px")),
+                             tabPanel("Informações", htmlOutput("oferta_demanda_por_procedimento_info", height = "400px"))
                              )
                            )
                         ),
@@ -156,8 +207,8 @@ ui <- dashboardPage(skin = "blue",
                     fluidRow(
                       tabBox(title = "Absenteísmo por Procedimentos Produzidos", width=12,
                              tabPanel("Gráfico", plotlyOutput(outputId = "absenteismo_producao_plot",height = "1000px")),
-                             tabPanel("Dados", dataTableOutput("absenteismo_producao_tab", height = "800px")),
-                             tabPanel("Informações", htmlOutput("absenteismo_producao_info", height = "800px"))
+                             tabPanel("Dados", dataTableOutput("absenteismo_producao_tab", height = "400px")),
+                             tabPanel("Informações", htmlOutput("absenteismo_producao_info", height = "400px"))
                              )
                            )
                         ),
@@ -187,9 +238,9 @@ ui <- dashboardPage(skin = "blue",
                     
                     fluidRow(
                       tabBox(title = "Absenteísmo por Unidades Solicitantes", width=12,
-                             tabPanel("Gráfico", plotlyOutput(outputId = "absenteismo_solicitacao_plot",height = "1000px")),
-                             tabPanel("Dados", dataTableOutput("absenteismo_solicitacao_tab", height = "800px")),
-                             tabPanel("Informações", htmlOutput("absenteismo_solicitacao_info", height = "800px"))
+                             tabPanel("Gráfico", plotlyOutput(outputId = "absenteismo_solicitacao_plot",height = "800px")),
+                             tabPanel("Dados", dataTableOutput("absenteismo_solicitacao_tab", height = "400px")),
+                             tabPanel("Informações", htmlOutput("absenteismo_solicitacao_info", height = "400px"))
                              )
                            )
                         )
@@ -205,44 +256,49 @@ server <- function(input, output, session) {
 ###########################################################################################
 
 tempo_de_espera_procedimento <- reactive({
-   req(input$lista_tempo_de_espera_procedimento)
-   ifelse(input$lista_tempo_de_espera_procedimento == "TODOS", a <- previsao, 
-      a <- subset(previsao, previsao$PROCEDIMENTO == input$lista_tempo_de_espera_procedimento))
-      a$PROCEDIMENTO <- factor(a$PROCEDIMENTO, levels = a$PROCEDIMENTO[order(a$VALOR)])
+   req(input$lista_tempo_de_espera_por_procedimento)
+      a <- subset(tempo_espera, tempo_espera$PROCEDIMENTO == input$lista_tempo_de_espera_por_procedimento)
       a
       
       
 })
- 
+
+
+
+#infobox1 
+output$tempo_de_espera_procedimento_dia_box1 <- renderInfoBox({
+ infoBox(
+   "Agendamentos", paste0(tempo_de_espera_procedimento()$OFERTA, " consulta(s)/mês"), icon = icon("list"),
+   color = "purple", fill = T
+ )
+})
+
+#infobox2
+output$tempo_de_espera_procedimento_dia_box2 <- renderInfoBox({
+ infoBox(
+   "Fila", paste0(tempo_de_espera_procedimento()$TOTAL, " pacientes em fila"), icon = icon("list"),
+   color = "orange", fill = T
+ )
+})
+
+
+#infobox3
+output$tempo_de_espera_procedimento_dia_box3 <- renderInfoBox({
+ infoBox(
+   "Previsão", paste0(tempo_de_espera_procedimento()$PREVISAO, " dias"), icon = icon("list"),
+   color = "blue", fill = T
+ )
+})
 
 #gráfico 
-output$tempo_de_espera_procedimento_plot <- renderPlotly({
-   req(input$lista_tempo_de_espera_procedimento)
-   if(input$lista_tempo_de_espera_procedimento == "TODOS"){
+output$tempo_de_espera_procedimento_dia_plot <- renderPlotly({
    
-              a <-  ggplot(tempo_de_espera_procedimento(), aes(x =  PROCEDIMENTO, y = VALOR, fill = CLASSIFICACAO)) + 
-                     geom_col()+ 
-                     ylab("DIAS")+
-                     xlab(" ")+
-                     theme_classic()+
-                     theme(axis.text.x = element_text(hjust = 1))+
-                     coord_flip()+
-                     scale_fill_manual(values = c("Adequado" = "green", "Alerta" = "yellow", "Inadequado" = "red"))
+              gg.gauge(tempo_de_espera_procedimento()$PREVISAO, as.character(tempo_de_espera_procedimento()$PROCEDIMENTO))
 
-              ggplotly(a)
-              
-   }else{
-   
-              gg.gauge(tempo_de_espera_procedimento()$VALOR, as.character(tempo_de_espera_procedimento()$PROCEDIMENTO))
-      
-   }
-    
-   
- 
 })
 
 #tabela 
-output$tempo_de_espera_procedimento_tab <- renderDataTable({
+output$tempo_de_espera_procedimento_dia_tab <- renderDataTable({
  
  as.data.frame(tempo_de_espera_procedimento(), row.names = F)
  
@@ -254,12 +310,149 @@ options = list(
 
 
 #informações 
-output$tempo_de_espera_procedimento_info <- renderText({
+output$tempo_de_espera_procedimento_dia_info <- renderText({
  
- paste("<b>teste </b>", "<br>",
-       "<b>teste: </b> teste")
+  paste("<b>Observações: </b>", "<br>",
+         tempo_de_espera_procedimento()$OBSERVACOES, "<br>",
+        "<b>Informações Gerais: </b>", "<br>",
+         "-O resultado aqui demonstardo trata-se do tempo médio de espera. Casos graves terão agendamento" , "<br>",
+         "prioritário e podem ser atendidos antes do tempo estimado nesta lista;", "<br>",
+         "-Lembre-se, o resultado aqui demonstarado é uma previsão e previsão não é garantia de atendimento."
+)
  
 })
+
+
+
+
+###########################################################################################
+#Tempo de Espera todos os procedimento por ofeta
+###########################################################################################
+
+
+output$tempo_de_espera_todos_procedimentos_oferta_plot <- renderD3tree2({
+   
+   tm_todos_procedimentos_oferta <- treemap(tempo_espera,
+                                                     index=c("CLASSIFICACAO","PROCEDIMENTO"),
+                                                     vSize="OFERTA",
+                                                     vColor = "CLASSIFICACAO",
+                                                     type="categorical",
+                                                     fontsize.labels=12,
+                                                     lowerbound.cex.labels=1,
+                                                     draw = F,
+                                                     palette = c("green","yellow","red"))
+   
+   d3tree2(tm_todos_procedimentos_oferta, rootname = "Total de Procedimentos Ofertados")
+   
+})
+
+#tabela 
+output$tempo_de_espera_todos_procedimentos_oferta_tab <- renderDataTable({
+ 
+ as.data.frame(tempo_espera[,c(1,5,8)], row.names = F)
+ 
+}, extensions = 'Buttons',
+options = list(
+ "dom" = 'T<"clear">lBfrtip',
+ buttons = list('copy', 'csv', 'pdf', 'print')))
+
+
+#informações 
+output$tempo_de_espera_todos_procedimentos_oferta_info <- renderText({
+ 
+  paste("<b>Informações Gerais: </b>", "<br>",
+         "-O resultado aqui demonstardo trata-se do tempo médio de espera. Casos graves terão agendamento" , "<br>",
+         "prioritário e podem ser atendidos antes do tempo estimado nesta lista;", "<br>",
+         "-Lembre-se, o resultado aqui demonstarado é uma previsão e previsão não é garantia de atendimento."
+  )
+ 
+})
+###########################################################################################
+#Tempo de Espera todos os procedimento por fila
+###########################################################################################
+
+output$tempo_de_espera_todos_procedimentos_fila_plot <- renderD3tree2({   
+   
+   tm_todos_procedimentos_fila <- treemap(tempo_espera,
+                                                     index=c("CLASSIFICACAO","PROCEDIMENTO"),
+                                                     vSize="TOTAL",
+                                                     vColor = "CLASSIFICACAO",
+                                                     type="categorical",
+                                                     fontsize.labels=12,
+                                                     lowerbound.cex.labels=1,
+                                                     draw = F,
+                                                     palette = c("green","yellow","red"))
+
+
+   d3tree2(tm_todos_procedimentos_fila, rootname = "Total em Fila de Espera")
+
+})         
+
+#tabela 
+output$tempo_de_espera_todos_procedimentos_fila_tab <- renderDataTable({
+ 
+ as.data.frame(tempo_espera[,c(1:4,8)], row.names = F)
+ 
+}, extensions = 'Buttons',
+options = list(
+ "dom" = 'T<"clear">lBfrtip',
+ buttons = list('copy', 'csv', 'pdf', 'print')))
+
+
+#informações 
+output$tempo_de_espera_todos_procedimentos_fila_info <- renderText({
+ 
+  paste("<b>Informações Gerais: </b>", "<br>",
+         "-O resultado aqui demonstardo trata-se do tempo médio de espera. Casos graves terão agendamento" , "<br>",
+         "prioritário e podem ser atendidos antes do tempo estimado nesta lista;", "<br>",
+         "-Lembre-se, o resultado aqui demonstarado é uma previsão e previsão não é garantia de atendimento."
+  )
+ 
+})
+###########################################################################################
+#Tempo de Espera todos os procedimento por dia
+###########################################################################################
+
+output$tempo_de_espera_todos_procedimentos_dia_plot <- renderPlotly({
+   
+   tempo_espera$PROCEDIMENTO <- factor(tempo_espera$PROCEDIMENTO, levels = tempo_espera$PROCEDIMENTO[order(tempo_espera$PREVISAO)])
+          
+   a <-  ggplot(tempo_espera, aes(x =  PROCEDIMENTO, y = PREVISAO, fill = CLASSIFICACAO)) + 
+   geom_col()+ 
+   ylab("DIAS")+
+   xlab(" ")+
+   theme_classic()+
+   theme(axis.text.x = element_text(hjust = 1))+
+   coord_flip()+
+   scale_fill_manual(values = c("Adequado" = "green", "Alerta" = "yellow", "Inadequado" = "red"))
+   
+   ggplotly(a)
+   
+})
+
+
+#tabela 
+output$tempo_de_espera_todos_procedimentos_dia_tab <- renderDataTable({
+ 
+ as.data.frame(tempo_espera[,c(1,6,8)], row.names = F)
+ 
+}, extensions = 'Buttons',
+options = list(
+ "dom" = 'T<"clear">lBfrtip',
+ buttons = list('copy', 'csv', 'pdf', 'print')))
+
+
+#informações 
+output$tempo_de_espera_todos_procedimentos_dia_info <- renderText({
+ 
+  paste("<b>Informações Gerais: </b>", "<br>",
+         "-O resultado aqui demonstardo trata-se do tempo médio de espera. Casos graves terão agendamento" , "<br>",
+         "prioritário e podem ser atendidos antes do tempo estimado nesta lista;", "<br>",
+         "-Lembre-se, o resultado aqui demonstarado é uma previsão e previsão não é garantia de atendimento."
+  ) 
+})
+
+
    
 ###########################################################################################
 #Oferta e Demanda por Procedimento
