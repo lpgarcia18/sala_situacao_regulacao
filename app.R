@@ -612,13 +612,13 @@ output$absenteismo_solicitacao_plot <- renderPlotly({
    if(input$lista_solicitacao_distrito == "TODOS" & input$lista_solicitacao_ano == "TODOS"){
       
                a <- ggparcoord(data = absenteismo_solicitacao(), columns = c(3,4), 
-                     groupColumn = 1, order = 4, boxplot = T, showPoints = T, scale = "uniminmax")+
+                     groupColumn = 1, order = 4, boxplot = T, showPoints = T, scale = "globalminmax")+
                      geom_text( aes(label = rep(absenteismo_solicitacao()$UNIDADE,2))) 
       
    }else if(input$lista_solicitacao_distrito != "TODOS" & input$lista_solicitacao_ano == "TODOS"){
    
                a <- ggparcoord(data = absenteismo_solicitacao(), columns = c(3,4), 
-                     groupColumn = 2,order = 4, boxplot = T, showPoints = T, scale = "uniminmax")+
+                     groupColumn = 2,order = 4, boxplot = T, showPoints = T, scale = "globalminmax")+
                      geom_text( aes(label = rep(absenteismo_solicitacao()$UNIDADE,2))) 
                
    }else if(input$lista_solicitacao_distrito == "TODOS" & input$lista_solicitacao_ano != "TODOS"){
